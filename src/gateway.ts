@@ -80,6 +80,24 @@ export async function registerGatewayRoutes(app: FastifyInstance, deps: GatewayD
     const rl = deps.limiter.check(key.id, key.rateLimit);
     if (!rl.allowed) {
       reply.header('x-ratelimit-remaining', '0');
+      // Rejections are audited too: a flood of 429s is exactly what an
+      // operator wants to see.
+      const params = (msg.params ?? {}) as { name?: unknown };
+      const tool = msg.method === 'tools/call' && typeof params.name === 'string' ? params.name : msg.method;
+      const entry = {
+        ts: new Date().toISOString(),
+        keyId: key.id,
+        keyName: key.name,
+        server: '',
+        tool,
+        latencyMs: 0,
+        ok: false,
+        error: 'rate limit exceeded',
+        argsBytes: 0,
+        outputBytes: 0,
+      };
+      deps.audit.record(entry);
+      deps.stats.record(entry);
       return reply.send(errorResponse(id, ErrorCodes.RateLimited, 'rate limit exceeded'));
     }
     reply.header('x-ratelimit-remaining', String(rl.remaining));
