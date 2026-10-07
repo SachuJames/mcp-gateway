@@ -1,0 +1,26 @@
+services:
+  gateway:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      MCP_GW_ADMIN_TOKEN: ${MCP_GW_ADMIN_TOKEN:?set an admin token}
+      MCP_GW_PORT: 8080
+      MCP_GW_HOST: 0.0.0.0
+      MCP_GW_CALL_TIMEOUT_MS: 30000
+      MCP_GW_MAX_ARGS_BYTES: 65536
+      MCP_GW_MAX_OUTPUT_BYTES: 262144
+      MCP_GW_RL_CAPACITY: 60
+      MCP_GW_RL_REFILL: 1
+      MCP_GW_LOG_DIR: /app/logs
+    volumes:
+      - gateway-logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/healthz').then(r=>{if(!r.ok)process.exit(1)})"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  gateway-logs:
