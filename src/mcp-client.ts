@@ -60,6 +60,8 @@ export class McpClient extends EventEmitter {
     this.transport.on('message', (msg) => this.onMessage(msg));
     this.transport.on('exit', (err) => this.onTransportDown(err));
     this.transport.on('close', () => this.onTransportDown(new Error('transport closed')));
+    // 'error' on an EventEmitter throws when unlistened; surface it as a regular event.
+    this.transport.on('error', (err) => this.emit('transportError', err));
     await this.transport.start();
 
     const params: McpInitializeParams = {

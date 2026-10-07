@@ -45,27 +45,23 @@ export class StdioTransport extends EventEmitter {
     child.stderr?.on('data', (chunk: Buffer) => {
       this.emit('stderr', chunk.toString('utf8'));
     });
-    child.on('error', (err) => this.emit('error', err));
-    child.on('exit', (code, signal) => {
-      this.child = null;
-      this.emit('exit', new UpstreamExitedError(code, signal));
-    });
 
+    // Persistent handlers are attached only after a successful spawn: if
+    // spawn itself fails, the 'error' event must reject this promise, not
+    // blow up inside an EventEmitter re-emit with no listener.
     await new Promise<void>((resolve, reject) => {
-      const onError = (err: Error) => {
-        cleanup();
+      child.once('error', (err: Error) => {
+        this.child = null;
         reject(err);
-      };
-      const onSpawn = () => {
-        cleanup();
+      });
+      child.once('spawn', () => {
+        child.on('error', (err) => this.emit('error', err));
+        child.on('exit', (code, signal) => {
+          this.child = null;
+          this.emit('exit', new UpstreamExitedError(code, signal));
+        });
         resolve();
-      };
-      const cleanup = () => {
-        child.off('error', onError);
-        child.off('spawn', onSpawn);
-      };
-      child.once('error', onError);
-      child.once('spawn', onSpawn);
+      });
     });
   }
 
