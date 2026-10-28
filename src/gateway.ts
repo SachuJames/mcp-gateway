@@ -18,6 +18,7 @@ import {
 import { McpClient, McpTimeoutError } from './mcp-client.js';
 import { RateLimiter } from './ratelimit.js';
 import { ServerRegistry, qualifyTool, splitQualifiedTool } from './registry.js';
+import { GATEWAY_VERSION } from './version.js';
 
 export interface GatewayDeps {
   registry: ServerRegistry;
@@ -27,8 +28,6 @@ export interface GatewayDeps {
   stats: Stats;
   config: GatewayConfig;
 }
-
-const GATEWAY_VERSION = '0.1.0';
 
 function extractSecret(req: FastifyRequest): string {
   const auth = req.headers.authorization;

@@ -14,6 +14,7 @@ import {
   isNotification,
   isResponse,
 } from './jsonrpc.js';
+import { GATEWAY_VERSION } from './version.js';
 
 export interface McpTransportLike {
   send(msg: JsonRpcMessage): void | Promise<void>;
@@ -67,7 +68,7 @@ export class McpClient extends EventEmitter {
     const params: McpInitializeParams = {
       protocolVersion: MCP_PROTOCOL_VERSION,
       capabilities: {},
-      clientInfo: { name: clientName, version: '0.1.0' },
+      clientInfo: { name: clientName, version: GATEWAY_VERSION },
     };
     const result = (await this.request('initialize', params)) as McpInitializeResult;
     const notify: JsonRpcNotification = {
