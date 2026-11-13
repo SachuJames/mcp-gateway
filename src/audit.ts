@@ -45,6 +45,31 @@ export class AuditLog {
   recent(limit = 100): AuditEntry[] {
     return this.ring.slice(-limit).reverse();
   }
+
+  query(q: AuditQuery): { entries: AuditEntry[]; total: number } {
+    const matched = this.ring.filter((e) => {
+      if (q.keyId !== undefined && e.keyId !== q.keyId) return false;
+      if (q.tool !== undefined && e.tool !== q.tool) return false;
+      if (q.outcome !== undefined && e.outcome !== q.outcome) return false;
+      // Entry timestamps are ISO strings in UTC, so ranges compare as text.
+      if (q.since !== undefined && e.ts < q.since) return false;
+      if (q.until !== undefined && e.ts > q.until) return false;
+      return true;
+    });
+    const total = matched.length;
+    const entries = matched.reverse().slice(q.offset, q.offset + q.limit);
+    return { entries, total };
+  }
+}
+
+export interface AuditQuery {
+  keyId?: string;
+  tool?: string;
+  outcome?: AuditOutcome;
+  since?: string;
+  until?: string;
+  limit: number;
+  offset: number;
 }
 
 export interface ToolStats {

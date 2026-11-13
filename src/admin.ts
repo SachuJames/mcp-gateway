@@ -1,8 +1,10 @@
 import { FastifyInstance } from 'fastify';
 import { KeyStore } from './auth.js';
-import { AuditLog, Stats } from './audit.js';
+import { AuditLog, AuditOutcome, Stats } from './audit.js';
 import { RateLimiter } from './ratelimit.js';
 import { RegisterServerSpec, ServerRegistry } from './registry.js';
+
+const AUDIT_OUTCOMES: AuditOutcome[] = ['ok', 'error', 'timeout', 'rate_limited'];
 
 export interface AdminDeps {
   registry: ServerRegistry;
@@ -103,10 +105,39 @@ export async function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps)
       });
 
       admin.get('/stats', async () => deps.stats.snapshot());
-      admin.get('/logs', async (req) => {
-        const { limit } = req.query as { limit?: string };
-        const n = Math.min(Math.max(Number.parseInt(limit ?? '100', 10) || 100, 1), 1000);
-        return { logs: deps.audit.recent(n) };
+      admin.get('/logs', async (req, reply) => {
+        const q = req.query as {
+          limit?: string;
+          offset?: string;
+          keyId?: string;
+          tool?: string;
+          outcome?: string;
+          since?: string;
+          until?: string;
+        };
+        const limit = Math.min(Math.max(Number.parseInt(q.limit ?? '100', 10) || 100, 1), 1000);
+        const offset = Math.max(Number.parseInt(q.offset ?? '0', 10) || 0, 0);
+        if (q.outcome !== undefined && !AUDIT_OUTCOMES.includes(q.outcome as AuditOutcome)) {
+          return reply.status(400).send({ error: `outcome must be one of: ${AUDIT_OUTCOMES.join(', ')}` });
+        }
+        for (const [name, value] of [
+          ['since', q.since],
+          ['until', q.until],
+        ] as const) {
+          if (value !== undefined && Number.isNaN(Date.parse(value))) {
+            return reply.status(400).send({ error: `${name} must be an ISO 8601 timestamp` });
+          }
+        }
+        const { entries, total } = deps.audit.query({
+          keyId: q.keyId,
+          tool: q.tool,
+          outcome: q.outcome as AuditOutcome | undefined,
+          since: q.since,
+          until: q.until,
+          limit,
+          offset,
+        });
+        return { logs: entries, total, limit, offset };
       });
     },
     { prefix: '/admin' },

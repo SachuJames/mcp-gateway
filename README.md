@@ -7,7 +7,7 @@
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Fastify](https://img.shields.io/badge/Fastify-5-000000?logo=fastify)](https://fastify.dev)
-[![Tests](https://img.shields.io/badge/tests-37%20passing-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-53%20passing-brightgreen)](tests/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A managed gateway for [Model Context Protocol](https://modelcontextprotocol.io) servers. Register MCP servers once, then let many agents share them through one endpoint with API-key auth, per-tenant scopes, rate limiting, guardrails, and full audit logging.
@@ -66,7 +66,7 @@ Or run the full scripted tour (build, register, call, denied call, rate limit, a
 - **Auth and scopes**: API keys with per-tenant server scopes (`["calc"]` or `["*"]`) and optional tool-level allowlists. Secrets are sha256-hashed at rest, shown once at creation.
 - **Rate limiting**: per-key token buckets with optional per-key overrides; `x-ratelimit-remaining` on every response.
 - **Guardrails**: gateway-wide tool deny patterns, max argument size, per-call timeouts, max output size.
-- **Audit and stats**: every call (including denials and 429s) lands in a JSON-lines audit log and an in-memory ring for the live dashboard; per-tool/per-tenant counters for usage charts. Each entry carries an outcome (`ok`, `error`, `timeout`, `rate_limited`), so a slow upstream reads differently from a broken one.
+- **Audit and stats**: every call (including denials and 429s) lands in a JSON-lines audit log and an in-memory ring for the live dashboard; per-tool/per-tenant counters for usage charts. Each entry carries an outcome (`ok`, `error`, `timeout`, `rate_limited`), so a slow upstream reads differently from a broken one, and `GET /admin/logs` queries the log by key, tool, outcome, or time range.
 - **Admin API**: manage servers, keys, stats, and logs under `/admin` (bearer token).
 - **Dashboard**: React UI for servers, tool catalog, live request log, usage charts, and key management. Served by the gateway when `dashboard/dist` exists.
 
@@ -80,7 +80,7 @@ Or run the full scripted tour (build, register, call, denied call, rate limit, a
 | `GET/POST/DELETE /admin/keys` | admin token | API key management |
 | `GET /admin/tools` | admin token | Aggregated tool catalog |
 | `GET /admin/stats` | admin token | Usage counters |
-| `GET /admin/logs` | admin token | Recent audit entries |
+| `GET /admin/logs` | admin token | Audit entries, newest first; filter with `keyId`, `tool`, `outcome`, `since`, `until`, page with `limit`/`offset` |
 
 Tool calls return gateway error codes in the `-3200x` range: `-32001` upstream
 timeout, `-32002` upstream unavailable, `-32003` rate limited, `-32004`
@@ -101,7 +101,7 @@ unauthorized, `-32005` forbidden, `-32006` guardrail violation.
 ## Development
 
 ```bash
-npm test          # vitest, 37 tests
+npm test          # vitest, 53 tests
 npm run typecheck # tsc --noEmit
 npm run build     # emit to dist/
 ```
@@ -119,7 +119,7 @@ src/            gateway: proxy, admin api, registry, auth, limits, audit
   transports/   stdio and SSE JSON-RPC transports
 demo-servers/   calculator and notes MCP servers used by the demo
 dashboard/      react admin UI (served from / when built)
-tests/          37 vitest tests
+tests/          53 vitest tests
 scripts/demo.sh end-to-end demo against real local processes
 ```
 
