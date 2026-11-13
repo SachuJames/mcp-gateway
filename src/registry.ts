@@ -12,6 +12,8 @@ export interface RegisterServerSpec {
   /** Short prefix used to qualify tool names, e.g. "calc" -> "calc__add". */
   name: string;
   transport: ServerTransportConfig;
+  /** Per-server timeout for upstream calls, in ms. Falls back to the gateway-wide default when unset. */
+  timeoutMs?: number;
 }
 
 export type ServerStatus = 'connecting' | 'online' | 'offline' | 'error';
@@ -20,12 +22,16 @@ export interface RegisteredServer {
   id: string;
   name: string;
   transport: ServerTransportConfig;
+  timeoutMs?: number;
   status: ServerStatus;
   serverInfo?: { name: string; version: string };
   tools: McpTool[];
   lastError?: string;
   connectedAt?: string;
 }
+
+/** Slowest per-server timeout a registration may ask for; past this a call is a hang, not a wait. */
+export const MAX_TIMEOUT_MS = 600_000;
 
 export const TOOL_SEPARATOR = '__';
 
@@ -66,6 +72,12 @@ export class ServerRegistry {
     if (!/^[a-zA-Z0-9_-]{1,64}$/.test(spec.name)) {
       throw new Error('server name must be 1-64 chars of [a-zA-Z0-9_-]');
     }
+    if (
+      spec.timeoutMs !== undefined &&
+      (!Number.isInteger(spec.timeoutMs) || spec.timeoutMs < 1 || spec.timeoutMs > MAX_TIMEOUT_MS)
+    ) {
+      throw new Error(`timeoutMs must be a whole number of milliseconds between 1 and ${MAX_TIMEOUT_MS}`);
+    }
     for (const existing of this.servers.values()) {
       if (existing.name === spec.name) {
         throw new Error(`server name already registered: ${spec.name}`);
@@ -76,6 +88,7 @@ export class ServerRegistry {
       id,
       name: spec.name,
       transport: spec.transport,
+      timeoutMs: spec.timeoutMs,
       status: 'connecting',
       tools: [],
     };
@@ -92,7 +105,7 @@ export class ServerRegistry {
             })
           : new SseTransport({ url: spec.transport.url, headers: spec.transport.headers });
 
-      const client = new McpClient(transport, this.defaultTimeoutMs);
+      const client = new McpClient(transport, spec.timeoutMs ?? this.defaultTimeoutMs);
       client.on('down', () => {
         record.status = 'offline';
       });

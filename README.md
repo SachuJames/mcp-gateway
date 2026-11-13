@@ -62,11 +62,11 @@ Or run the full scripted tour (build, register, call, denied call, rate limit, a
 
 ## Features
 
-- **Upstream registry**: register stdio and SSE MCP servers; the gateway runs the `initialize` handshake and caches the tool catalog. One shared connection per server, multiplexed across clients.
+- **Upstream registry**: register stdio and SSE MCP servers; the gateway runs the `initialize` handshake and caches the tool catalog. One shared connection per server, multiplexed across clients. A server can carry its own `timeoutMs` at registration to override the gateway-wide call timeout.
 - **Auth and scopes**: API keys with per-tenant server scopes (`["calc"]` or `["*"]`) and optional tool-level allowlists. Secrets are sha256-hashed at rest, shown once at creation.
 - **Rate limiting**: per-key token buckets with optional per-key overrides; `x-ratelimit-remaining` on every response.
 - **Guardrails**: gateway-wide tool deny patterns, max argument size, per-call timeouts, max output size.
-- **Audit and stats**: every call (including denials and 429s) lands in a JSON-lines audit log and an in-memory ring for the live dashboard; per-tool/per-tenant counters for usage charts.
+- **Audit and stats**: every call (including denials and 429s) lands in a JSON-lines audit log and an in-memory ring for the live dashboard; per-tool/per-tenant counters for usage charts. Each entry carries an outcome (`ok`, `error`, `timeout`, `rate_limited`), so a slow upstream reads differently from a broken one.
 - **Admin API**: manage servers, keys, stats, and logs under `/admin` (bearer token).
 - **Dashboard**: React UI for servers, tool catalog, live request log, usage charts, and key management. Served by the gateway when `dashboard/dist` exists.
 
@@ -92,7 +92,7 @@ unauthorized, `-32005` forbidden, `-32006` guardrail violation.
 |---|---|---|
 | `MCP_GW_ADMIN_TOKEN` | (required) | Bearer token for `/admin` |
 | `MCP_GW_PORT` / `MCP_GW_HOST` | `8080` / `127.0.0.1` | Listen address |
-| `MCP_GW_CALL_TIMEOUT_MS` | `30000` | Per tool-call timeout |
+| `MCP_GW_CALL_TIMEOUT_MS` | `30000` | Default per tool-call timeout; a server registered with `timeoutMs` overrides it |
 | `MCP_GW_MAX_ARGS_BYTES` | `65536` | Max tool arguments size |
 | `MCP_GW_MAX_OUTPUT_BYTES` | `262144` | Max upstream output size |
 | `MCP_GW_RL_CAPACITY` / `MCP_GW_RL_REFILL` | `60` / `1` | Default token bucket |

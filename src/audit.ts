@@ -1,6 +1,8 @@
 import { appendFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
+export type AuditOutcome = 'ok' | 'error' | 'timeout' | 'rate_limited';
+
 export interface AuditEntry {
   ts: string;
   keyId: string;
@@ -9,6 +11,7 @@ export interface AuditEntry {
   tool: string;
   latencyMs: number;
   ok: boolean;
+  outcome: AuditOutcome;
   error?: string;
   argsBytes: number;
   outputBytes: number;

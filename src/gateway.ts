@@ -91,6 +91,7 @@ export async function registerGatewayRoutes(app: FastifyInstance, deps: GatewayD
         tool,
         latencyMs: 0,
         ok: false,
+        outcome: 'rate_limited' as const,
         error: 'rate limit exceeded',
         argsBytes: 0,
         outputBytes: 0,
@@ -160,6 +161,7 @@ async function handleToolCall(
       tool: qualified,
       latencyMs,
       ok: false,
+      outcome: err instanceof McpTimeoutError ? ('timeout' as const) : ('error' as const),
       error: message,
       argsBytes: Buffer.byteLength(JSON.stringify(args), 'utf8'),
       outputBytes: 0,
@@ -197,7 +199,7 @@ async function handleToolCall(
 
   const argsBytes = Buffer.byteLength(JSON.stringify(args), 'utf8');
   try {
-    const result = await client.callTool(split.toolName, args, deps.config.defaultCallTimeoutMs);
+    const result = await client.callTool(split.toolName, args, server.timeoutMs);
     const text = toolResultText(result);
     checkOutputGuardrail(text, deps.config.maxOutputBytes);
     const latencyMs = Date.now() - started;
@@ -209,6 +211,7 @@ async function handleToolCall(
       tool: qualified,
       latencyMs,
       ok: true,
+      outcome: 'ok' as const,
       argsBytes,
       outputBytes: Buffer.byteLength(text, 'utf8'),
     };
@@ -216,9 +219,6 @@ async function handleToolCall(
     deps.stats.record(entry);
     return { jsonrpc: '2.0', id, result };
   } catch (err) {
-    if (err instanceof McpTimeoutError) {
-      return fail(server.name, err);
-    }
     return fail(server.name, err);
   }
 }
